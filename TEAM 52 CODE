@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Visualization App</title>
+</head>
+<body>
+    <div id="root"></div> <!-- This is where the React app will be rendered -->
+    
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    
+    <script type="text/babel">
+        // Import required libraries and modules
+        import React, { useState, useEffect } from 'react';
+        import './App.css';
+
+        // Create a WebSocket connection function for real-time updates
+        function setupWebSocket() {
+            const socket = new WebSocket('ws://your-server-url'); 
+
+            socket.onopen = () => {
+                console.log('WebSocket connection established');
+            };
+
+            socket.onmessage = (event) => {
+                const newData = JSON.parse(event.data);
+                setFlightData(newData);
+            };
+
+            socket.onclose = () => {
+                console.log('WebSocket connection closed');
+            };
+
+            return socket;
+        }
+
+        function App() {
+            // State for storing real-time flight data
+            const [flightData, setFlightData] = useState([]);
+            const [filters, setFilters] = useState({
+                airline: '',
+                departureAirport: '',
+                // Add more filters as needed
+            });
+
+            useEffect(() => {
+                const socket = setupWebSocket();
+
+                return () => {
+                    socket.close();
+                };
+            }, []);
+
+            useEffect(() => {
+                async function fetchFlightData() {
+                    try {
+                        // Fetch real-time flight data from the server's API
+                        const API_KEY = 'c8c56cc930026c4e9b8285c0a709148d'; // Replace with your API key
+                        const response = await fetch(`https://opensky-network.org/api/states/all?apikey=${API_KEY}`);
+                        const data = await response.json();
+                        setFlightData(data.states);
+                    } catch (error) {
+                        console.error('Error fetching flight data:', error);
+                    }
+                }
+
+                fetchFlightData();
+            }, []);
+
+            function filterFlights() {
+                return flightData.filter((flight) => {
+                    return (
+                        (filters.airline === '' || flight.airline === filters.airline) &&
+                        (filters.departureAirport === '' || flight.departureAirport === filters.departureAirport)
+                    );
+                });
+            }
+
+            function sortFlights() {
+                // Implement sorting logic here based on user preferences
+                // For example, sort by departure time, arrival time, etc.
+                return flightData; // Replace with sorted data
+            }
+
+            return (
+                <div className="App">
+                    <div className="filters">
+                        <input
+                            type="text"
+                            placeholder="Airline"
+                            value={filters.airline}
+                            onChange={(e) => setFilters({ ...filters, airline: e.target.value })}
+                        />
+                        <input
+                            type="text"
+                            placeholder="Departure Airport"
+                            value={filters.departureAirport}
+                            onChange={(e) => setFilters({ ...filters, departureAirport: e.target.value })}
+                        />
+                        {/* Add more filter inputs as needed */}
+                    </div>
+                    <div className="flight-list">
+                        {sortFlights().map((flight) => (
+                            <div key={flight.id} className="flight-item">
+                                <span>Flight: {flight.flightNumber}</span>
+                                <span>Airline: {flight.airline}</span>
+                                {/* Display more flight information */}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
