@@ -1,76 +1,122 @@
-# HTF23-Team-52
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Visualization App</title>
+</head>
+<body>
+    <div id="root"></div> <!-- This is where the React app will be rendered -->
+    
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    
+    <script type="text/babel">
+        // Import required libraries and modules
+        import React, { useState, useEffect } from 'react';
+        import './App.css';
 
-## GitHub submission guide
+        // Create a WebSocket connection function for real-time updates
+        function setupWebSocket() {
+            const socket = new WebSocket('ws://your-server-url'); 
 
-In this Readme, you will find a guide on how to fork this Repository, add files to it, and make a pull request to contribute your changes.
+            socket.onopen = () => {
+                console.log('WebSocket connection established');
+            };
 
-<details open>
-<summary><h3>1. Login to your GitHub Account by heading over to <a href="https://github.com">github.com</a></h3></summary>
-<br>
-<ul>
-   <li>Open the <a href="https://github.com/cbitosc/HTF23-Team-52">current repo</a> in a new tab.</li>
-   <li>Perform all operations in the newly opened tab, and follow the current tab for instructions.</li>
-</ul>
-</details>
+            socket.onmessage = (event) => {
+                const newData = JSON.parse(event.data);
+                setFlightData(newData);
+            };
 
-<details>
-<summary><h3>2. Fork the Repository</h3></summary>
-<br>
-<ul>
- <li>In the newly opened tab, on the top-right corner, click on <b>Fork</b></li>
- <img src="/images/fork.png">
+            socket.onclose = () => {
+                console.log('WebSocket connection closed');
+            };
 
- <li>Enter the <b>Repository Name</b> as <b>HTF23-Team-52 (your team number)</b>.</li>
- <li>Then click <b>Create Fork</b> leaving all other fields to their default value.</li>
- <img src="/images/create-fork.png">
- <li>After a few moments, you can view the repo.</li>
-</ul>
-</details>
+            return socket;
+        }
 
-<details>
-<summary><h3>3. Clone your Repository</h3></summary>
-<br>
-<ul>
- <li>Click on <b>Code</b> and from the dropdown menu copy your <b>web URL</b> in your forked Repository. </li>
- <img src="/images/clone1.png">
- <li>Now open terminal on your local machine.</li>
- <li>Use the following command to clone your forked Repository:</li>
-<code> git clone https://github.com/your-username/HTF23-Team-52.git </code>
-<hr>
- <img src="/images/clone2.png">
+        function App() {
+            // State for storing real-time flight data
+            const [flightData, setFlightData] = useState([]);
+            const [filters, setFilters] = useState({
+                airline: '',
+                departureAirport: '',
+                // Add more filters as needed
+            });
 
-</ul>
-</details>
+            useEffect(() => {
+                const socket = setupWebSocket();
 
-<details>
-<summary><h3>4. Adding files to the Repository</h3></summary>
-<br/>
-<ul>
- <li>While doing it for the first time, create a new branch for your changes.</li>
-   <code> git checkout -b branch-name </code>
-   <li>Add your files or make modifications to existing files.</li>
-   <li>Stage your changes:</li>
-   <code> git add . </code>
-   <li>Commit your changes:</li>
-   <code> git commit -m "Descriptive commit message" </code>
-   <li>Push changes to your fork </li>
-   <code> git push origin branch-name </code>
-   <hr>
-   
- <img src="/images/push.png">
-</ul>
-</details>
+                return () => {
+                    socket.close();
+                };
+            }, []);
 
-<details>
-<summary><h3>5. Create a Pull Request</h3></summary>
-   <br>
-<ul>
- <li>Finally, click on the <b>Contribute</b> button and choose <b>Open Pull Request</b>.</li>
- <img src="/images/PR1.png">
- <li>Leaving all fields to their default values, click on <b>Create Pull Request</b>.</li>
- <img src="/images/PR2.png">
- <li>Wait for a few moments, then you are all done</li>
-</ul>
-</details>
+            useEffect(() => {
+                async function fetchFlightData() {
+                    try {
+                        // Fetch real-time flight data from the server's API
+                        const API_KEY = 'c8c56cc930026c4e9b8285c0a709148d'; // Replace with your API key
+                        const response = await fetch(`https://opensky-network.org/api/states/all?apikey=${API_KEY}`);
+                        const data = await response.json();
+                        setFlightData(data.states);
+                    } catch (error) {
+                        console.error('Error fetching flight data:', error);
+                    }
+                }
 
-## Thanks for participating!
+                fetchFlightData();
+            }, []);
+
+            function filterFlights() {
+                return flightData.filter((flight) => {
+                    return (
+                        (filters.airline === '' || flight.airline === filters.airline) &&
+                        (filters.departureAirport === '' || flight.departureAirport === filters.departureAirport)
+                    );
+                });
+            }
+
+            function sortFlights() {
+                // Implement sorting logic here based on user preferences
+                // For example, sort by departure time, arrival time, etc.
+                return flightData; // Replace with sorted data
+            }
+
+            return (
+                <div className="App">
+                    <div className="filters">
+                        <input
+                            type="text"
+                            placeholder="Airline"
+                            value={filters.airline}
+                            onChange={(e) => setFilters({ ...filters, airline: e.target.value })}
+                        />
+                        <input
+                            type="text"
+                            placeholder="Departure Airport"
+                            value={filters.departureAirport}
+                            onChange={(e) => setFilters({ ...filters, departureAirport: e.target.value })}
+                        />
+                        {/* Add more filter inputs as needed */}
+                    </div>
+                    <div className="flight-list">
+                        {sortFlights().map((flight) => (
+                            <div key={flight.id} className="flight-item">
+                                <span>Flight: {flight.flightNumber}</span>
+                                <span>Airline: {flight.airline}</span>
+                                {/* Display more flight information */}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
